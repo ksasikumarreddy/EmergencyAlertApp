@@ -1,0 +1,115 @@
+package emergencyalertwithvoice;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.net.*;
+import org.json.JSONObject;
+import com.sun.speech.freetts.*;
+
+public class EmergencyAlertWithVoiceAndButton extends JFrame {
+
+    private JTextArea addressArea;
+    private JButton voiceCommandButton;
+    private JButton buttonOnlyAlert;
+    private static final String VOICE_NAME = "kevin16";
+
+    public EmergencyAlertWithVoiceAndButton() {
+        setTitle("Emergency Alert App");
+        setSize(550, 320);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        JLabel label = new JLabel("Detected Address (via IP):", JLabel.CENTER);
+        addressArea = new JTextArea(5, 40);
+        addressArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(addressArea);
+
+        voiceCommandButton = new JButton("🔊 Activate Voice Emergency Alert");
+        buttonOnlyAlert = new JButton("🚨 Send Alert by Button Tap");
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(voiceCommandButton);
+        buttonPanel.add(buttonOnlyAlert);
+
+        add(label, BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        // On launch, get address
+        fetchLiveAddress();
+
+        // Voice + Alert
+        voiceCommandButton.addActionListener(e -> handleVoiceCommand());
+
+        // Button-only alert
+        buttonOnlyAlert.addActionListener(e -> sendAlertWithoutVoice());
+
+        setVisible(true);
+    }
+
+    private void fetchLiveAddress() {
+        try {
+            URL url = new URL("http://ip-api.com/json/");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
+            StringBuilder jsonText = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                jsonText.append(line);
+            }
+            reader.close();
+
+            JSONObject obj = new JSONObject(jsonText.toString());
+            String city = obj.getString("city");
+            String region = obj.getString("regionName");
+            String country = obj.getString("country");
+            String address = city + ", " + region + ", " + country;
+
+            addressArea.setText(address);
+        } catch (Exception ex) {
+            addressArea.setText("Unable to fetch location.");
+        }
+    }
+
+    private void handleVoiceCommand() {
+        String address = addressArea.getText();
+        if (address.contains("Unable")) {
+            JOptionPane.showMessageDialog(this, "Location not available.");
+            return;
+        }
+
+        try {
+            Voice voice = VoiceManager.getInstance().getVoice(VOICE_NAME);
+            if (voice != null) {
+                voice.allocate();
+                voice.speak("Emergency alert activated. Sending message to hospital.");
+                voice.deallocate();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        showAlertMessage(address);
+    }
+
+    private void sendAlertWithoutVoice() {
+        String address = addressArea.getText();
+        if (address.contains("Unable")) {
+            JOptionPane.showMessageDialog(this, "Location not available.");
+            return;
+        }
+        showAlertMessage(address);
+    }
+
+    private void showAlertMessage(String address) {
+        // Simulate sending message to hospital
+        System.out.println("Emergency alert sent to hospital!");
+        System.out.println("Address: " + address);
+        JOptionPane.showMessageDialog(this, "🚨 Emergency Alert Sent to Hospital!\n📍 Location: " + address);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(EmergencyAlertWithVoiceAndButton::new);
+    }
+}
